@@ -1,3 +1,6 @@
+# the datasets were obtained from Kaggle.com. Make sure to download these datasets and store them in your working directory. They will be downloaded as "Training/", "Test/", and "test-multiple_fruits" the specific url is: https://www.kaggle.com/moltean/fruits. At the time of obtaining the dataset, there were only 65k images -- still plenty of images to work with.
+
+
 # Creating Training and Testing datasets
 
 # over 65k total images, 95 different fruits
@@ -23,7 +26,7 @@ import pickle
 
 all_fruit_files_train = []
 
-for fruit_file in glob.glob("Training/*"):
+for fruit_file in glob.glob("Training/*"):		# make sure you are working in the directory where the "Training/" folder is located. The same goes for "Test/" below.
 	all_fruit_files_train.append(fruit_file) 	# appending all fruit folders to one list
 
 
