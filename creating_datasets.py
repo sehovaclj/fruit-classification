@@ -1,5 +1,6 @@
 # the datasets were obtained from Kaggle.com. Make sure to download these datasets and store them in your working directory. They will be downloaded as "Training/", "Test/", and "test-multiple_fruits" the specific url is: https://www.kaggle.com/moltean/fruits. At the time of obtaining the dataset, there were only 65k images -- still plenty of images to work with.
 
+# This is part 1 of the entire process, hence manually creating the training and testing sets by converting the images to pixel form (3D matrices -- 100x100x3)
 
 # Creating Training and Testing datasets
 
