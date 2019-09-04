@@ -31,6 +31,7 @@ for fruit_file in glob.glob("Training/*"):		# make sure you are working in the d
 	all_fruit_files_train.append(fruit_file) 	# appending all fruit folders to one list
 
 
+
 # store pixel values as dict
 
 IMAGES_TRAINING = []
@@ -86,7 +87,8 @@ if a1 == a2:
 	print('\nclasses are the same for training and testing sets, glob does not mess it up')
 	print('can do print(a1) and print(a2) to check\n')
 
-
+# defining classes
+classes = a1
 
 counter = 0
 
@@ -129,11 +131,13 @@ with open('images_training.pkl', 'wb') as f:
 with open('images_testing.pkl', 'wb') as f:
 	pickle.dump(IMAGES_TESTING, f)
 
+with open('classes.pkl', 'wb') as f:
+	pickle.dump(classes, f)
+
+
+
 """
 # to load:
 with open('images_training.pkl', 'rb') as f:
 	images_training = pickle.load(f)
 """
-
-
-

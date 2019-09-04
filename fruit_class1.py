@@ -29,5 +29,54 @@ import os
 
 
 
+
 ############################################################################################
+
+# building the CNN model
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+############################################################################################
+
+# first thing we have to do is load the training and testing images from the pickle files
+
+# load pickle files
+with open('images_training.pkl', 'rb') as f:
+	images_training = pickle.load(f)
+
+with open('images_testing.pkl', 'rb') as f:
+	images_testing = pickle.load(f)
+
+with open('classes.pkl', 'rb') as f:
+	classes = pickle.load(f)
+
+
+
+
+
 
