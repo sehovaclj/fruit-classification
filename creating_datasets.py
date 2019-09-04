@@ -9,6 +9,8 @@
 
 import numpy as np
 
+import torch
+
 from PIL import Image
 
 import glob
@@ -51,10 +53,9 @@ for i in all_fruit_files_train:
 		im = Image.open(j)
 		w, h = im.size 	# get width and height of image
 		pixels = list(im.getdata()) 	# get pixel data as list
-		pixels = np.array(pixels).reshape(w, h, 3) # convert to array with dimensions w x h x 3
-		dict = { clss : pixels } # create dict
+		pixels = np.array(pixels).reshape(h, w, 3) # convert to array with dimensions h x w x 3, which is 100x100x3
+		dict = { clss : torch.from_numpy(pixels).float().view(3, h, w) } # create dict, convert to float torch tensor, and change the shape to 3x100x100
 		IMAGES_TRAINING.append(dict) # store dict
-
 
 
 
@@ -106,8 +107,8 @@ for i in all_fruit_files_test:
 		im = Image.open(j)
 		w, h = im.size
 		pixels = list(im.getdata())
-		pixels = np.array(pixels).reshape(w, h, 3)
-		dict = { clss : pixels }
+		pixels = np.array(pixels).reshape(h, w, 3)
+		dict = { clss : torch.from_numpy(pixels).float().view(3, h, w) }
 		IMAGES_TESTING.append(dict)
 
 
@@ -117,14 +118,13 @@ for i in all_fruit_files_test:
 #
 # len(IMAGES_TRAINING) 			# output: total number of training images
 # len(IMAGES_TRAINING[0])		# output: 1 (because this is one dict value, or image)
-# IMAGES_TRAINING[0][0].shape	# output: (100, 100, 3), here the first [0] is the image, and the second [0]
-								# is the class. [737][0] is the last image for Strawberry Wedge, or class 0
+# IMAGES_TRAINING[0][0].shape	# output: (3, 100, 100), here the first [0] is the image, and the second [0] is the class. [737][0] is the last image for Strawberry Wedge, or class 0
 
 
+####################################################################################
 
-###################
+# pickling IMAGES_TRAINING and IMAGES_TESTING
 
-# pickling
 
 with open('images_training.pkl', 'wb') as f:
 	pickle.dump(IMAGES_TRAINING, f)
@@ -136,8 +136,7 @@ with open('classes.pkl', 'wb') as f:
 
 
 
-"""
-# to load:
-with open('images_training.pkl', 'rb') as f:
-	images_training = pickle.load(f)
-"""
+
+
+
+
