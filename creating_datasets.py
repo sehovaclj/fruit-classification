@@ -45,11 +45,11 @@ class_number = np.arange(len(all_fruit_files_train))
 
 for i in all_fruit_files_train:
 
-	images_file = glob.glob(i + '/*.jpg') 	# read each image file
+	images_files = glob.glob(i + '/*.jpg') 	# read each image file
 	clss = class_number[counter]
 	counter += 1
 
-	for j in images_file:
+	for j in images_files:
 		im = Image.open(j)
 		w, h = im.size 	# get width and height of image
 		pixels = list(im.getdata()) 	# get pixel data as list
@@ -103,7 +103,7 @@ for i in all_fruit_files_test:
 	clss = class_number[counter]
 	counter += 1
 
-	for j in images_file:
+	for j in images_files:
 		im = Image.open(j)
 		w, h = im.size
 		pixels = list(im.getdata())
