@@ -103,14 +103,12 @@ class CNN_Net(nn.Module):
 
 # the main function
 
-def main(seed, cuda, C_in, nf1, k1, mpk1, mps1, nf2, k2, nf3, k3, fc1, fc2, fco, loss_function_choice):
+def main(seed, cuda, arc, loss_function_choice, epochs, batch_size, test_four):
 
 
 	# seed == given seed
 	np.random.seed(seed)
 	torch.manual_seed(seed)
-
-
 
 
 	##########################################################################################
@@ -194,9 +192,21 @@ def main(seed, cuda, C_in, nf1, k1, mpk1, mps1, nf2, k2, nf3, k3, fc1, fc2, fco,
  
 
 	############################################################################################
-
+	
 	# calling the model
-	model = CNN_Net(C_in, nf1, k1, mpk1, mps1, nf2, k2, nf3, k3, fc1, fc2, fco) 
+	model = CNN_Net(
+		arc['C_in'],
+		arc['num_filters1'],
+		arc['k1'],
+		arc['maxpool_k1'],
+		arc['maxpool_s1'],
+		arc['num_filters2'],
+		arc['k2'],
+		arc['num_filters3'],
+		arc['fc_size1'],
+		arc['fc_size2'],
+		arc['fc_output']
+		) 
 
 	# if using a GPU, assign seed and send model parameters to cuda
 	if cuda:
@@ -218,10 +228,11 @@ def main(seed, cuda, C_in, nf1, k1, mpk1, mps1, nf2, k2, nf3, k3, fc1, fc2, fco,
 	if loss_function_choice == 'CE':
 		loss_fn = nn.CrossEntropyLoss()
 
+
 	print("\nStarting training")
 
 	train_loss = []
-	test_loss = []
+	valid_loss = []
 
 
 	# loop over each epoch
@@ -229,7 +240,7 @@ def main(seed, cuda, C_in, nf1, k1, mpk1, mps1, nf2, k2, nf3, k3, fc1, fc2, fco,
 
 		t_one_epoch = time.time()
 
-		print("Epoch {}".format(epoch+1))
+		print("\nEpoch {}".format(epoch+1))
 
 		train_epoch_loss = 0
 
@@ -272,13 +283,13 @@ def main(seed, cuda, C_in, nf1, k1, mpk1, mps1, nf2, k2, nf3, k3, fc1, fc2, fco,
 		# append total loss of epoch
 		train_loss.append(train_epoch_loss)
 
-		print("\n TRAINING LOSS of epoch: {}".format(train_epoch_loss))
+		print("TRAINING LOSS: {}".format(train_epoch_loss))
 			
 		####################################################################################
 
 		# TESTING -- essentially same as above, but don't backward+optimize
 
-		test_epoch_loss = 0
+		valid_epoch_loss = 0
 
 		total_correct = 0
 		total_samples = 0
@@ -300,7 +311,7 @@ def main(seed, cuda, C_in, nf1, k1, mpk1, mps1, nf2, k2, nf3, k3, fc1, fc2, fco,
 
 				loss = loss_fn(outputs, targets)
 
-				test_epoch_loss += loss.item()
+				valid_epoch_loss += loss.item()
 
 				# calculating accuracy
 				predicted_class = torch.zeros(outputs.shape[0]).view(-1, 1).to(torch.long) # empty zero tensor the same length as outputs 	
@@ -315,6 +326,43 @@ def main(seed, cuda, C_in, nf1, k1, mpk1, mps1, nf2, k2, nf3, k3, fc1, fc2, fco,
 				total_correct += correct.item()
 				total_samples += out_of.item()	# don't really need this, but good practice
 
+		# append total loss of test 
+		valid_loss.append(valid_epoch_loss)
+
+		# All train and validation batches passed, one epoch complete here
+		# print statements here
+		print("TESTING LOSS: {}".format(valid_epoch_loss))
+		print("\nAccuracy for validation set: {} correct / {} total samples = {}%".format( total_correct, total_samples, (total_correct/total_samples)*100.0 ))
+
+
+
+
+	############################################################################################################
+
+	# Test the model on first four samples from test set (remember, samples are randomized)
+	# This test is done after model has completed training
+
+	if test_four:
+
+		with torch.no_grad():
+
+			inputs_test = samples_test[:4]
+			actual_class_test = class_labels_test[:4]
+
+			if cuda:
+				inputs_test = inputs_test.cuda()
+
+			outputs_test = model(inputs_test)
+
+			predicted_class_test = torch.zeros(outputs_test.shape[0]).view(-1, 1).to(torch.long) # empty zero tensor the same length as outputs 	
+			for i in range(len(outputs_test)):
+				predicted_class_test[i] = outputs_test[i].argmax()
+
+			# this is where we connect back to original String classes, see loading pickle files near top
+			print("\nModel has predicted the classes as:\t{},\t{},\t{},\t{}".format( classes[predicted_class_test[0]],
+				classes[predicted_class_test[1]], classes[predicted_class_test[2]], classes[predicted_class_test[3]] ))
+			print("\nActual classes are:                \t{},\t{},\t{},\t{}".format( classes[actual_class_test[0]],
+				classes[actual_class_test[1]], classes[actual_class_test[2]], classes[actual_class_test[3]] ))
 
 
 
@@ -324,11 +372,7 @@ def main(seed, cuda, C_in, nf1, k1, mpk1, mps1, nf2, k2, nf3, k3, fc1, fc2, fco,
 
 
 
-
-
-
-
-	return class_labels_train, labels_onehot_train, samples_train 
+	return model, class_labels_train, labels_onehot_train, samples_train, total_correct, total_samples 
 
 
 
@@ -338,12 +382,29 @@ def main(seed, cuda, C_in, nf1, k1, mpk1, mps1, nf2, k2, nf3, k3, fc1, fc2, fco,
 
 ################################################################################################
 
+# assigning the model architecture
+
+MODEL_ARC = {
+	'C_in': 3,
+	'num_filters1': 9,
+	'k1': 5,
+	'maxpool_k1': 2,
+	'maxpool_s1': 2,
+	'num_filters2': 18,
+	'k2': 5,
+	'num_filters3': 36,
+	'fc_size1': 512,
+	'fc_size2': 256,
+	'fc_output': 95
+	}
+	 
 # calling the main function, this is where we assign variables
 
 if __name__ == "__main__":
 
-	classes, labels, samples = main(seed=0, cuda=False, C_in=3, nf1=6, k1=5, mpk1=2, mps1=2,
-				nf2=9, k2=5, nf3=18, k3=5, fc1=512, fc2=256, fco=95, loss_function_choice='MSE')
+	MODEL, classes, labels, samples, correct, sampled = main(seed=1, cuda=True,
+		arc=MODEL_ARC, loss_function_choice='MSE', epochs=20,
+		batch_size=64, test_four=True)
 
 
 
