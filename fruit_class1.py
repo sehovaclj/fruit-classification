@@ -103,7 +103,7 @@ class CNN_Net(nn.Module):
 
 # the main function
 
-def main(seed, cuda, C_in, nf1, k1, mpk1, mps1, nf2, k2, nf3, k3, fc1, fc2, fco):
+def main(seed, cuda, C_in, nf1, k1, mpk1, mps1, nf2, k2, nf3, k3, fc1, fc2, fco, loss_function_choice):
 
 
 	# seed == given seed
@@ -111,10 +111,12 @@ def main(seed, cuda, C_in, nf1, k1, mpk1, mps1, nf2, k2, nf3, k3, fc1, fc2, fco)
 	torch.manual_seed(seed)
 
 
-	"""
+
 
 	##########################################################################################
 	# first thing we have to do is load the training and testing images from the pickle files
+
+	print("\nLoading pickle files")
 
 	# load pickle files
 	with open('images_training.pkl', 'rb') as f:
@@ -126,12 +128,75 @@ def main(seed, cuda, C_in, nf1, k1, mpk1, mps1, nf2, k2, nf3, k3, fc1, fc2, fco)
 	with open('classes.pkl', 'rb') as f:
 		classes = pickle.load(f)
 
-	"""
 
+	# creating a validation and test set. Primarily be testing on validation set, leave test set for very end
+	# every 10th element we will store as the test set. Hence 16421 total in test set, now 1643 in test set and 14778 in validation set.
+	images_final_test = images_testing[::10]
+	images_validation = images_testing.copy()
+	del images_validation[::10]
+
+
+	###########################################################################################
+
+	print("\nCreating train, validation, and test input samples + labels")
+
+
+	# generating training, validation, and testing input samples as well as labels
+	def generate_samples(dataset):
+
+		# first make a copy of the dataset
+		d = dataset.copy()
+
+		samples = []
+		labels = []
+
+		# select samples at random
+		idxs = np.random.choice(len(d), len(d)) 
+
+		# store the inputs and labels in lists
+		for i in idxs:
+			for key in d[i]:
+				labels.append(key)
+				samples.append(d[i][key])
+
+		labels = torch.Tensor(labels).view(-1, 1).to(torch.long) # need this for one-hot encoding
+
+		N = len(labels) # total length of samples
+		num_classes = 95 # total number of classes
+
+		# convert each class label to one-hot encoding label
+		labels_onehot = torch.FloatTensor(N, num_classes).zero_() # matrix of dimension N x 95
+		labels_onehot.scatter_(1, labels, 1) # one-hot here
+
+
+		# dimensions of image should be 3x100x100
+		depth = samples[0].shape[0]
+		h = samples[0].shape[1]
+		w = samples[0].shape[2]
+
+		# empty tensor matrix to store tensors from samples list
+		S = torch.zeros([len(samples), depth, h, w])
+		# convert list of tensors (samples) to tensor
+		for i in range(len(samples)):
+			S[i] = samples[i]
+
+
+		return labels, labels_onehot, S
+
+
+
+	# call function three times for three different datasets
+	class_labels_train, labels_onehot_train, samples_train = generate_samples(images_training)
+	class_labels_valid, labels_onehot_valid, samples_valid = generate_samples(images_validation)
+	class_labels_test, labels_onehot_test, samples_test = generate_samples(images_final_test)
+
+
+ 
+
+	############################################################################################
 
 	# calling the model
 	model = CNN_Net(C_in, nf1, k1, mpk1, mps1, nf2, k2, nf3, k3, fc1, fc2, fco) 
-
 
 	# if using a GPU, assign seed and send model parameters to cuda
 	if cuda:
@@ -139,14 +204,131 @@ def main(seed, cuda, C_in, nf1, k1, mpk1, mps1, nf2, k2, nf3, k3, fc1, fc2, fco)
 		torch.cuda.manual_seed_all(seed)
 		model.cuda()
 
-
+	"""
 	# testing the model
 	input_test = torch.randn([20, 3, 100, 100])
 	output = model(input_test)
+	"""
+
+	# stating the optimizer and loss function
+	optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+	# if statements to choose loss function, either MSE(when using one-hot as target) or CE (when using class labels as target)
+	if loss_function_choice == 'MSE':
+ 		loss_fn = nn.MSELoss() 
+	if loss_function_choice == 'CE':
+		loss_fn = nn.CrossEntropyLoss()
+
+	print("\nStarting training")
+
+	train_loss = []
+	test_loss = []
+
+
+	# loop over each epoch
+	for epoch in range(epochs):
+
+		t_one_epoch = time.time()
+
+		print("Epoch {}".format(epoch+1))
+
+		train_epoch_loss = 0
+
+		###############################################################################
+
+		# TRAINING
+
+		# loop over each batch
+		for b_idx in range(0, len(samples_train), batch_size):
+
+			# obtain input and target samples for each batch
+			inputs = samples_train[b_idx:b_idx+batch_size]
+			if loss_function_choice == 'MSE':
+				targets = labels_onehot_train[b_idx:b_idx+batch_size]
+			if loss_function_choice == 'CE':
+				targets = class_labels_train[b_idx:b_idx+batch_size] 
+
+			# use cuda if available
+			if cuda:
+				inputs = inputs.cuda()
+				targets = targets.cuda()
+
+			# zero parameter gradients
+			optimizer.zero_grad()
+
+			# forward pass of batch inputs through CNN model to obtain outputs
+			outputs = model(inputs)			
+
+			# compute loss between outputs and targets
+			loss = loss_fn(outputs, targets)
+			
+			# save loss of this batch and add it to total loss of epoch
+			train_epoch_loss += loss.item()
+
+			# backward + optimize
+			loss.backward()
+			optimizer.step()
+
+
+		# append total loss of epoch
+		train_loss.append(train_epoch_loss)
+
+		print("\n TRAINING LOSS of epoch: {}".format(train_epoch_loss))
+			
+		####################################################################################
+
+		# TESTING -- essentially same as above, but don't backward+optimize
+
+		test_epoch_loss = 0
+
+		total_correct = 0
+		total_samples = 0
+
+		for b_idx in range(0, len(samples_valid), batch_size):
+			with torch.no_grad():
+
+				inputs = samples_valid[b_idx:b_idx+batch_size]
+  				if loss_function_choice == 'MSE':
+					targets = labels_onehot_valid[b_idx:b_idx+batch_size]
+				if loss_function_choice == 'CE':
+					targets = class_labels_valid[b_idx:b_idx+batch_size] 
+
+				if cuda:
+					inputs = inputs.cuda()
+					targets = targets.cuda()
+
+				outputs = model(inputs)
+
+				loss = loss_fn(outputs, targets)
+
+				test_epoch_loss += loss.item()
+
+				# calculating accuracy
+				predicted_class = torch.zeros(outputs.shape[0]).view(-1, 1).to(torch.long) # empty zero tensor the same length as outputs 	
+				for i in range(len(outputs)):
+					predicted_class[i] = outputs[i].argmax()
+
+				actual_class = class_labels_valid[b_idx:b_idx+batch_size]
+
+				correct = sum(predicted_class == actual_class)
+				out_of = batch_size # don't really need this, but good practice
+
+				total_correct += correct.item()
+				total_samples += out_of.item()	# don't really need this, but good practice
 
 
 
-	return output.shape
+
+
+
+
+
+
+
+
+
+
+
+	return class_labels_train, labels_onehot_train, samples_train 
 
 
 
@@ -160,8 +342,8 @@ def main(seed, cuda, C_in, nf1, k1, mpk1, mps1, nf2, k2, nf3, k3, fc1, fc2, fco)
 
 if __name__ == "__main__":
 
-	output_shape = main(seed=0, cuda=False, C_in=3, nf1=6, k1=5, mpk1=2, mps1=2,
-				nf2=9, k2=5, nf3=18, k3=5, fc1=256, fc2=128, fco=95)
+	classes, labels, samples = main(seed=0, cuda=False, C_in=3, nf1=6, k1=5, mpk1=2, mps1=2,
+				nf2=9, k2=5, nf3=18, k3=5, fc1=512, fc2=256, fco=95, loss_function_choice='MSE')
 
 
 
