@@ -111,6 +111,7 @@ def main(seed, cuda, arc, loss_function_choice, epochs, batch_size, test_four):
 	torch.manual_seed(seed)
 
 
+
 	##########################################################################################
 	# first thing we have to do is load the training and testing images from the pickle files
 
@@ -203,6 +204,7 @@ def main(seed, cuda, arc, loss_function_choice, epochs, batch_size, test_four):
 		arc['num_filters2'],
 		arc['k2'],
 		arc['num_filters3'],
+		arc['k3'],
 		arc['fc_size1'],
 		arc['fc_size2'],
 		arc['fc_output']
@@ -214,11 +216,11 @@ def main(seed, cuda, arc, loss_function_choice, epochs, batch_size, test_four):
 		torch.cuda.manual_seed_all(seed)
 		model.cuda()
 
-	"""
+
 	# testing the model
-	input_test = torch.randn([20, 3, 100, 100])
-	output = model(input_test)
-	"""
+	#input_test = torch.randn([20, 3, 100, 100])
+	#output = model(input_test)
+
 
 	# stating the optimizer and loss function
 	optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
@@ -298,7 +300,7 @@ def main(seed, cuda, arc, loss_function_choice, epochs, batch_size, test_four):
 			with torch.no_grad():
 
 				inputs = samples_valid[b_idx:b_idx+batch_size]
-  				if loss_function_choice == 'MSE':
+				if loss_function_choice == 'MSE':
 					targets = labels_onehot_valid[b_idx:b_idx+batch_size]
 				if loss_function_choice == 'CE':
 					targets = class_labels_valid[b_idx:b_idx+batch_size] 
@@ -393,6 +395,7 @@ MODEL_ARC = {
 	'num_filters2': 18,
 	'k2': 5,
 	'num_filters3': 36,
+	'k3': 5,	
 	'fc_size1': 512,
 	'fc_size2': 256,
 	'fc_output': 95
@@ -405,7 +408,6 @@ if __name__ == "__main__":
 	MODEL, classes, labels, samples, correct, sampled = main(seed=1, cuda=True,
 		arc=MODEL_ARC, loss_function_choice='MSE', epochs=20,
 		batch_size=64, test_four=True)
-
 
 
 
