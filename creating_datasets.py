@@ -1,12 +1,20 @@
-# the datasets were obtained from Kaggle.com. Make sure to download these datasets and store them in your working directory. They will be downloaded as "Training/", "Test/", and "test-multiple_fruits" the specific url is: https://www.kaggle.com/moltean/fruits. At the time of obtaining the dataset, there were only 65k images -- still plenty of images to work with.
+# Run this code first!
 
-# This is part 1 of the entire process, hence manually creating the training and testing sets by converting the images to pixel form (3D matrices -- 100x100x3)
+# Author: Ljubisa Sehovac
+# github: sehovaclj
 
-# Creating Training and Testing datasets
+# email: lsehovac@uwo.ca
+# feel free to email me with questions, concerns, fixes, etc.
 
-# over 65k total images, 95 different fruits
+# the datasets were obtained from Kaggle.com. 
+# Make sure to download these datasets and store them in your working directory. They will be downloaded as "Training/", "Test/", and "test-multiple_fruits" the specific url is: https://www.kaggle.com/moltean/fruits.
+# At the time of obtaining the dataset, there were only 65k images -- still plenty of images to work with.
 
+# This is part 1 of the entire process, hence manually creating the training and testing sets by converting the images to pixel form (3D matrices -- 3x100x100)
 
+# over 65k total images, 95 different fruits -- see readme file
+
+# importing
 import numpy as np
 
 import torch
