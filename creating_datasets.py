@@ -14,6 +14,12 @@
 
 # over 65k total images, 95 different fruits -- see readme file
 
+
+# !!Note!! all scripts were run on personal laptop: ~16 GB of CPU RAM, ~38 GB of swap memory, ~6 GB GPU RAM
+
+
+
+
 # importing
 import numpy as np
 
